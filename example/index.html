@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Map List</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.3/css/bootstrap.min.css"/>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Roboto, sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        #filters {
+            padding: 10px;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+        }
+
+        #mapList {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+        }
+
+        #map {
+            height: 100%;
+            flex: 2;
+        }
+
+        #list {
+            width: 300px;
+            height: 100%;
+            overflow: auto;
+            padding: 5px 10px;
+        }
+
+        .item {
+            padding: 15px;
+            cursor: pointer;
+            color: rgb(72, 72, 72);
+            border-width: 1px;
+            border-style: solid;
+            border-color: rgb(235, 235, 235);
+            border-radius: 3px;
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+
+        .item.selected {
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+            border-top: 1px solid #0088F3;
+        }
+
+        .item h3 {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: .25rem;
+        }
+
+    </style>
+</head>
+<body>
+<div id="filters">
+    <div class="form-row">
+        <div class="col">
+            <input id="search" class="form-control" placeholder="Search" oninput="mapList.filter()">
+        </div>
+        <div class="col">
+            <select id="select" class="form-control" onchange="mapList.filter()">
+                <option value="">Show All</option>
+                <option>512-223-0158</option>
+            </select>
+        </div>
+    </div>
+
+</div>
+<div id="mapList">
+    <div id="map"></div>
+    <div id="list"></div>
+</div>
+<script>
+
+    const search = document.getElementById('search');
+    const select = document.getElementById('select');
+    const list = document.getElementById("list");
+    let mapList;
+
+    function initMap() {
+        const map = new google.maps.Map(document.getElementById("map"), {
+            center: {
+                lat: 30.3079827,
+                lng: -97.8934852
+            },
+            zoom: 6
+        });
+        mapList = new MapList(map, list, {
+            sites: sites,
+            renderListDebounce: 300, // Defaults to 300
+            listItemClass: 'item', // Defaults to 'item'
+            listItemHoverClass: 'selected', // Defaults to 'selected'
+            hoverMarkerIcon: 'blue-marker.png', // If nothing is passed then the marker icon will not be changed
+            emptyMessageTemplate: `
+                <div class="text-center">
+                    <h5>No sites match your filters!</h5>
+                    <button class="btn btn-primary btn-block" onclick="clearFilters()">Clear Filters</button>
+                </div>
+            `,
+            getPosition(site) {
+                // Convert site to google marker position
+                // Defaults to site.position
+                return {
+                    lat: site.Lat,
+                    lng: site.Lng
+                };
+            },
+            getListItemTemplate(site) {
+                return `
+                    <h3>${site.Name}</h3>
+                    <h6>${site.Address}</h6>
+                    <div class="collapse" data-parent="#list">${site.Message}</div>
+                `
+            },
+            click(item) {
+                $(item.lastElementChild).collapse('toggle');
+            },
+            filter(site) {
+
+                const searchValue = search.value;
+                const selectValue = select.options[select.selectedIndex].value;
+
+                return (searchValue === ''
+                    || site.Name.toLowerCase().indexOf(searchValue.toLowerCase()) !== -1
+                    || site.Address.toLowerCase().indexOf(searchValue.toLowerCase()) !== -1)
+                    && (selectValue === '' || site.Phone.toLowerCase().indexOf(selectValue.toLowerCase()) !== -1);
+
+            }
+        });
+
+    }
+
+    function clearFilters() {
+        search.value = '';
+        select.selectedIndex = 0;
+        mapList.filter();
+    }
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.3/js/bootstrap.min.js"></script>
+<script src="sites.js"></script>
+<script src="map-list.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=[your-key]&libraries=places&callback=initMap"></script>
+</body>
+</html>
