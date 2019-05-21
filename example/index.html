@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Map List</title>
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no, width=device-width"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.3/css/bootstrap.min.css"/>
     <style>
         html,
@@ -70,6 +71,23 @@
             margin-top: .25rem;
         }
 
+        @media (max-width: 540px) {
+
+            #mapList {
+                flex-direction: column;
+            }
+
+            #map {
+                flex: 300px;
+            }
+
+            #list {
+                width: 100%;
+                -webkit-overflow-scrolling: touch;
+            }
+
+        }
+
     </style>
 </head>
 <body>
@@ -134,7 +152,23 @@
                 `
             },
             click(item) {
-                $(item.lastElementChild).collapse('toggle');
+                const $collapsible = $(item.lastElementChild);
+                if (!$collapsible.hasClass('show')) {
+                    let lastScrollTop;
+                    let lastLastScrollTop;
+                    (function scroll() {
+                        const change = item.offsetTop - list.offsetTop - list.scrollTop;
+                        if (change !== 0 && list.scrollTop !== lastLastScrollTop) {
+                            list.scrollTop += change / 5 + change / Math.abs(change);
+                            lastLastScrollTop = lastScrollTop;
+                            lastScrollTop = list.scrollTop;
+                            setTimeout(() => {
+                                scroll();
+                            }, 16);
+                        }
+                    })();
+                }
+                $collapsible.collapse('toggle');
             },
             filter(site) {
 

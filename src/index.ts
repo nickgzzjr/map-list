@@ -13,6 +13,7 @@ export default class MapList {
     private filteredMarkers = [];
 
     private preventRender = false;
+    private selectedMarker;
 
     constructor(map, list, options) {
 
@@ -59,6 +60,7 @@ export default class MapList {
     }
 
     private createMarker(site) {
+
         let position;
 
         if ((this.options.getPosition === undefined)) {
@@ -72,27 +74,74 @@ export default class MapList {
         });
 
         marker['site'] = site;
-        marker.addListener('click', () => {
+
+        marker.addListener('click', (event) => {
+            if (event.wa.type === 'touchend') {
+                this.select(marker, true);
+            }
             this.options.click(marker['item']);
         });
+
         marker.addListener('mouseover', () => {
-            marker['item'].classList.add("selected");
-            marker['item'].scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-            });
-            if (this.options.hoverMarkerIcon !== undefined) {
-                marker.setIcon(this.options.hoverMarkerIcon);
-            }
-            marker.setZIndex(google.maps.Marker.MAX_ZINDEX + 1);
+            this.select(marker, true);
         });
+
         marker.addListener('mouseout', () => {
-            marker['item'].classList.remove("selected");
-            marker.setIcon(null);
-            marker.setZIndex(0);
+            this.deselect(marker);
         });
+
+        this.createItem(marker);
         this.markerCluster.addMarker(marker);
         this.markers.push(marker);
+    }
+
+    private createItem(marker) {
+
+        const item = document.createElement('div');
+        item.classList.add(this.options.listItemClass);
+        item.innerHTML = this.options.getListItemTemplate(marker.site);
+
+        item.addEventListener('touchstart', (event) => {
+            item['touchstartX'] = event.touches[0].pageX;
+            item['touchstartY'] = event.touches[0].pageY;
+        });
+
+        item.addEventListener('touchend', (event) => {
+
+            event.preventDefault();
+
+            let distance = getTouchDistance(
+                item['touchstartX'],
+                event.changedTouches[0].pageX,
+                item['touchstartY'],
+                event.changedTouches[0].pageY
+            );
+
+            if (distance < 9) {
+                this.click(marker);
+                this.select(marker);
+            }
+
+        });
+
+        item.addEventListener('click', () => {
+            this.click(marker);
+        });
+
+        item.addEventListener('mouseenter', () => {
+            if (!this.map.getBounds().contains(marker.position)) {
+                this.preventRender = true;
+                this.map.setZoom(6);
+                this.map.panTo(marker.position);
+            }
+            this.select(marker);
+        });
+
+        item.addEventListener('mouseleave', () => {
+            this.deselect(marker);
+        });
+
+        marker.item = item;
     }
 
     private renderList() {
@@ -129,7 +178,7 @@ export default class MapList {
 
             for (const s in sortedMarkers) {
 
-                this.renderListItem(sortedMarkers[s]);
+                this.list.appendChild(sortedMarkers[s].item);
 
             }
 
@@ -137,50 +186,57 @@ export default class MapList {
 
     }
 
-    private renderListItem(marker) {
+    private click(marker) {
 
-        if (!marker.item) {
-            const item = document.createElement('div');
-            item.classList.add(this.options.listItemClass);
-            item.innerHTML = this.options.getListItemTemplate(marker.site);
-            item.addEventListener('click', () => {
-                this.preventRender = true;
-                this.map.setZoom(10);
-                this.map.panTo(marker.position);
-                this.options.click(item);
-            });
-            item.addEventListener('mouseenter', () => {
-                if (!this.map.getBounds().contains(marker.position)) {
-                    this.preventRender = true;
-                    this.map.setZoom(6);
-                    this.map.panTo(marker.position);
-                }
-                item.classList.add(this.options.listItemHoverClass);
-                if (marker.getMap() === null) {
-                    this.markerCluster.removeMarker(marker);
-                    marker.setMap(this.map);
-                    marker.isTemporary = true;
-                }
-                if (this.options.hoverMarkerIcon !== undefined) {
-                    marker.setIcon(this.options.hoverMarkerIcon);
-                }
-                marker.setZIndex(google.maps.Marker.MAX_ZINDEX + 1);
-            });
-            item.addEventListener('mouseleave', () => {
-                item.classList.remove(this.options.listItemHoverClass);
-                marker.setIcon(null);
-                marker.setZIndex(0);
-                if (marker.isTemporary) {
-                    this.markerCluster.addMarker(marker);
-                    marker.isTemporary = false;
-                }
-            });
+        this.preventRender = true;
+        this.map.setZoom(10);
+        this.map.panTo(marker.position);
+        this.options.click(marker.item);
 
-            marker.item = item;
+    }
+
+    private select(marker, scroll = false) {
+
+        if (this.selectedMarker && this.selectedMarker !== marker) {
+            this.deselect(this.selectedMarker);
+        }
+
+        this.selectedMarker = marker;
+
+        if (scroll) {
+
+            marker['item'].scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
 
         }
 
-        this.list.appendChild(marker.item);
+        marker.item.classList.add(this.options.listItemHoverClass);
+
+        if (marker.getMap() === null) {
+            this.markerCluster.removeMarker(marker);
+            marker.setMap(this.map);
+            marker.isTemporary = true;
+        }
+
+        if (this.options.hoverMarkerIcon !== undefined) {
+            marker.setIcon(this.options.hoverMarkerIcon);
+        }
+
+        marker.setZIndex(google.maps.Marker.MAX_ZINDEX + 1);
+
+    }
+
+    private deselect(marker) {
+
+        marker.item.classList.remove(this.options.listItemHoverClass);
+        marker.setIcon(null);
+        marker.setZIndex(0);
+        if (marker.isTemporary) {
+            this.markerCluster.addMarker(marker);
+            marker.isTemporary = false;
+        }
 
     }
 
@@ -227,4 +283,10 @@ function getDistance(p1, p2) {
         Math.sin(dLong / 2);
     // returns the distance in meter
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function getTouchDistance(x1, x2, y1, y2) {
+    let x = x2 - x1;
+    let y = y2 - y1;
+    return Math.sqrt((x * x) + (y * y));
 }
