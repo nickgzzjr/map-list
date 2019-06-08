@@ -20,6 +20,8 @@ export default class MapList {
         this.map = map;
         this.list = list;
         this.options = Object.assign({
+            orderByNearest: false,
+            showSitesInMapBoundsOnly: false,
             renderListDebounce: 300,
             listItemClass: 'item',
             listItemHoverClass: 'selected',
@@ -44,10 +46,8 @@ export default class MapList {
 
         this.filteredMarkers = this.markers.concat();
 
-        this.renderList();
-        this.preventRender = true;
-
         let timeout;
+
         google.maps.event.addListener(map, 'bounds_changed', () => {
             if (timeout) {
                 clearTimeout(timeout);
@@ -75,7 +75,7 @@ export default class MapList {
 
         marker['site'] = site;
 
-        marker.addListener('click', (event) => {
+        marker.addListener('click', event => {
             if (event.wa.type === 'touchend') {
                 this.select(marker, true);
             }
@@ -101,12 +101,12 @@ export default class MapList {
         item.classList.add(this.options.listItemClass);
         item.innerHTML = this.options.getListItemTemplate(marker.site);
 
-        item.addEventListener('touchstart', (event) => {
+        item.addEventListener('touchstart', event => {
             item['touchstartX'] = event.touches[0].pageX;
             item['touchstartY'] = event.touches[0].pageY;
         });
 
-        item.addEventListener('touchend', (event) => {
+        item.addEventListener('touchend', event => {
 
             event.preventDefault();
 
@@ -154,11 +154,23 @@ export default class MapList {
             return;
         }
 
-        const center = this.map.getCenter();
+        let markers = this.filteredMarkers.concat();
 
-        const sortedMarkers = this.filteredMarkers.sort((a, b) => {
-            return getDistance(a.position, center) - getDistance(b.position, center);
-        });
+        if (this.options.showSitesInMapBoundsOnly) {
+
+            markers = markers.filter(marker => this.map.getBounds().contains(marker.position));
+
+        }
+
+        if (this.options.orderByNearest) {
+
+            const center = this.map.getCenter();
+
+            markers = markers.sort((a, b) => {
+                return getDistance(a.position, center) - getDistance(b.position, center);
+            });
+
+        }
 
         while (this.list.hasChildNodes()) {
             this.list.removeChild(this.list.lastChild);
@@ -166,7 +178,7 @@ export default class MapList {
 
         this.list.scrollTo({top: 0});
 
-        if (sortedMarkers.length === 0) {
+        if (markers.length === 0) {
 
             const emptyMessage = document.createElement('div');
             emptyMessage.classList.add(this.options.listItemClass);
@@ -176,9 +188,9 @@ export default class MapList {
 
         } else {
 
-            for (const s in sortedMarkers) {
+            for (const s in markers) {
 
-                this.list.appendChild(sortedMarkers[s].item);
+                this.list.appendChild(markers[s].item);
 
             }
 
@@ -242,7 +254,7 @@ export default class MapList {
 
     filter() {
 
-        this.filteredMarkers = this.markers.concat().filter((marker) => {
+        this.filteredMarkers = this.markers.concat().filter(marker => {
 
             const show = this.options.filter(marker.site);
 
