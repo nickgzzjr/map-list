@@ -176,7 +176,7 @@ export default class MapList {
             this.list.removeChild(this.list.lastChild);
         }
 
-        this.list.scrollTo({top: 0});
+        this.list.scrollTop = 0;
 
         if (markers.length === 0) {
 
