@@ -76,7 +76,7 @@ export default class MapList {
         marker['site'] = site;
 
         marker.addListener('click', event => {
-            if (event.wa.type === 'touchend') {
+            if (event.type === 'touchend') {
                 this.select(marker, true);
             }
             this.options.click(marker['item']);
@@ -274,6 +274,11 @@ export default class MapList {
 
         this.renderList();
 
+    }
+
+    random() {
+
+        return `<h3>${site.Name}</h3><h6>${site.Address}</h6><div class="modal fade bd-example-modal-lg show" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header"><h3 class="modal-title" id="exampleModalLabel">${site.Name}</h3><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body text-left"><h4>${site.Address}</h4>${htmlDecode(site.Message)}</div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button></div></div></div></div>`;
     }
 
 }
